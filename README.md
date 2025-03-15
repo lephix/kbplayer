@@ -1,36 +1,70 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# KBPlayer - 键盘练习应用
 
-## Getting Started
+KBPlayer 是一个现代化的网页键盘练习应用，旨在帮助用户提高打字速度和准确性。应用采用直观的三区域布局，提供实时反馈和激励机制，让练习过程更加有趣和高效。
 
-First, run the development server:
+## 主要功能
 
+### 1. 三区域布局
+- **示例区域**：显示待输入的文本，支持中英文切换
+- **输入区域**：与示例区保持相同的宽度和换行，提供即时输入反馈
+- **模拟键盘区域**：展示虚拟键盘，支持按键提示功能
+
+### 2. 实时反馈
+- 输入匹配时文本变色，直观展示进度
+- 实时显示打字速度（APM）和用时
+- 连续命中或达到速度里程碑时显示特效激励
+
+### 3. 自定义设置
+- 中英文练习文本切换
+- 按键提示开关
+- 字体大小调整
+- 随机文本选择（每篇约500字符）
+
+### 4. 性能指标
+- 计时功能
+- APM（每分钟按键次数）统计
+- 达到 60/80/100 APM 时的特效奖励
+
+## 技术栈
+- Next.js
+- TypeScript
+- Tailwind CSS
+- React
+
+## 开发环境设置
+
+1. 克隆仓库
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone [repository-url]
+cd kbplayer
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. 安装依赖
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. 启动开发服务器
+```bash
+npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+4. 在浏览器中访问 `http://localhost:3000`
 
-## Learn More
+## 使用说明
 
-To learn more about Next.js, take a look at the following resources:
+1. 打开应用后，默认显示英文练习文本
+2. 可以通过设置面板调整练习参数：
+   - 切换中英文练习模式
+   - 开启/关闭按键提示
+   - 调整字体大小
+3. 开始输入文本，系统会自动记录时间和速度
+4. 达到速度里程碑时会显示特效激励
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 贡献指南
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+欢迎提交 Issue 和 Pull Request 来帮助改进这个项目。
 
-## Deploy on Vercel
+## 许可证
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+MIT License

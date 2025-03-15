@@ -1,103 +1,246 @@
-import Image from "next/image";
+'use client';
+
+import React, { useEffect, useState, useRef } from 'react';
+import { motion } from 'framer-motion';
+import { VirtualKeyboard } from '@/components/VirtualKeyboard';
+import { SettingsPanel } from '@/components/SettingsPanel';
+import { SpeedMilestone } from '@/components/SpeedMilestone';
+import { CompletionModal } from '@/components/CompletionModal';
+import { HistoryModal } from '@/components/HistoryModal';
+import { useTypingStore } from '@/store/useTypingStore';
+import { Cog6ToothIcon, ClockIcon } from '@heroicons/react/24/outline';
+import { speakWord } from '@/utils/speech';
+
+const getApmColor = (apm: number) => {
+  if (apm >= 100) return 'text-purple-600 font-bold';
+  if (apm >= 80) return 'text-blue-600 font-bold';
+  if (apm >= 60) return 'text-green-600 font-bold';
+  return 'text-gray-700 font-medium';
+};
+
+const getStreakColor = (streak: number) => {
+  if (streak >= 50) return 'text-purple-600 font-bold';
+  if (streak >= 35) return 'text-blue-600 font-bold';
+  if (streak >= 20) return 'text-green-600 font-bold';
+  return 'text-gray-700 font-medium';
+};
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const {
+    currentText,
+    inputText,
+    settings: {
+      fontSize,
+      useBoldText,
+      inputHeight,
+      isEnglish,
+      enableSound,
+    },
+    apm,
+    elapsedTime,
+    streak,
+    maxStreak,
+    isCompleted,
+    setInputText,
+    updateMetrics,
+    toggleSettings,
+    resetText,
+  } = useTypingStore();
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  const [showCompletionModal, setShowCompletionModal] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const lastWordEndIndex = useRef<number>(0);
+
+  useEffect(() => {
+    const interval = setInterval(updateMetrics, 1000);
+    return () => clearInterval(interval);
+  }, [updateMetrics]);
+
+  useEffect(() => {
+    if (isCompleted) {
+      setShowCompletionModal(true);
+    }
+  }, [isCompleted]);
+
+  useEffect(() => {
+    if (!enableSound) return;
+
+    if (isEnglish) {
+      // English mode: speak when a complete word is typed correctly
+      const currentPosition = inputText.length;
+      
+      // If we haven't typed anything new, return
+      if (currentPosition <= lastWordEndIndex.current) return;
+      
+      // Find the start of the current word
+      let wordStart = currentPosition;
+      while (wordStart > 0 && /[a-zA-Z-]/.test(inputText[wordStart - 1])) {
+        wordStart--;
+      }
+
+      // Find the end of the current word in the correct text
+      let wordEnd = wordStart;
+      while (wordEnd < currentText.length && /[a-zA-Z-]/.test(currentText[wordEnd])) {
+        wordEnd++;
+      }
+
+      // If we're still typing the word (haven't reached a non-word character), return
+      if (currentPosition < wordEnd) return;
+
+      // Get the complete word from both input and correct text
+      const typedWord = inputText.slice(wordStart, currentPosition);
+      const correctWord = currentText.slice(wordStart, wordEnd);
+
+      // Only speak if:
+      // 1. The word contains at least one letter
+      // 2. We've typed the entire word
+      // 3. The word is correct
+      // 4. We haven't spoken this word yet
+      if (
+        /[a-zA-Z]/.test(typedWord) && 
+        typedWord === correctWord &&
+        wordStart > lastWordEndIndex.current
+      ) {
+        speakWord(correctWord);
+        lastWordEndIndex.current = wordEnd;
+      }
+    } else {
+      // Chinese mode: speak immediately when a character is typed correctly
+      const currentPosition = inputText.length - 1;
+      // 只在新输入字符时检查
+      if (currentPosition >= 0 && currentPosition >= lastWordEndIndex.current) {
+        const currentChar = currentText[currentPosition];
+        // 检查当前字符是否正确输入且是汉字
+        if (inputText[currentPosition] === currentChar && /[\u4e00-\u9fa5]/.test(currentChar)) {
+          speakWord(currentChar);
+          lastWordEndIndex.current = currentPosition + 1;
+        }
+      }
+    }
+  }, [inputText, currentText, isEnglish, enableSound]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInputText(e.target.value);
+  };
+
+  const formatTime = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = Math.floor(seconds % 60);
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  };
+
+  const getHighlightColor = (index: number) => {
+    if (index >= inputText.length) return 'text-gray-800';
+    return inputText[index] === currentText[index]
+      ? 'text-green-500'
+      : 'text-red-500';
+  };
+
+  const handleNextChallenge = () => {
+    setShowCompletionModal(false);
+    resetText();
+  };
+
+  return (
+    <main className="min-h-screen bg-gray-50 py-8 px-4">
+      <div className="max-w-4xl mx-auto space-y-8">
+        {/* Header */}
+        <div className="flex justify-between items-center">
+          <h1 className="text-3xl font-bold text-gray-900">KBPlayer</h1>
+          <div className="flex items-center gap-4">
+            <div className="flex gap-6 text-sm">
+              <div>
+                <span className="text-gray-700 font-medium">Time:</span>{' '}
+                <span className="text-gray-700 font-medium">{formatTime(elapsedTime)}</span>
+              </div>
+              <div>
+                <span className="text-gray-700 font-medium">APM:</span>{' '}
+                <span className={getApmColor(apm)}>{apm}</span>
+              </div>
+              <div>
+                <span className="text-gray-700 font-medium">Streak:</span>{' '}
+                <span className={getStreakColor(streak)}>{streak}</span>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowHistoryModal(true)}
+              className="p-2 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100"
+            >
+              <ClockIcon className="h-6 w-6" />
+            </button>
+            <button
+              onClick={toggleSettings}
+              className="p-2 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100"
+            >
+              <Cog6ToothIcon className="h-6 w-6" />
+            </button>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+
+        {/* Example Text */}
+        <div
+          className={`bg-white rounded-lg p-6 shadow-sm ${
+            useBoldText ? 'font-bold' : 'font-normal'
+          }`}
+          style={{ fontSize: `${fontSize}px` }}
         >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+          {currentText.split('').map((char, index) => (
+            <motion.span
+              key={index}
+              className={getHighlightColor(index)}
+              initial={false}
+              animate={{
+                scale: index === inputText.length ? 1.1 : 1,
+              }}
+            >
+              {char}
+            </motion.span>
+          ))}
+        </div>
+
+        {/* Input Area */}
+        <textarea
+          value={inputText}
+          onChange={handleInputChange}
+          className={`w-full p-6 bg-white rounded-lg shadow-sm resize-vertical focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 ${
+            useBoldText ? 'font-bold' : 'font-normal'
+          }`}
+          style={{
+            fontSize: `${fontSize}px`,
+            height: `${inputHeight}px`,
+            minHeight: '100px',
+            maxHeight: '500px',
+          }}
+          placeholder="Start typing here..."
+        />
+
+        {/* Virtual Keyboard */}
+        <VirtualKeyboard />
+      </div>
+
+      {/* Settings Panel */}
+      <SettingsPanel />
+
+      {/* Speed Milestone */}
+      <SpeedMilestone apm={apm} />
+
+      {/* Completion Modal */}
+      <CompletionModal
+        isOpen={showCompletionModal}
+        onClose={() => setShowCompletionModal(false)}
+        onNextChallenge={handleNextChallenge}
+        stats={{
+          time: formatTime(elapsedTime),
+          apm,
+          maxStreak,
+        }}
+      />
+
+      {/* History Modal */}
+      <HistoryModal
+        isOpen={showHistoryModal}
+        onClose={() => setShowHistoryModal(false)}
+      />
+    </main>
   );
 }
